@@ -1,5 +1,5 @@
 # Roobet-Player
-Automatically gambles using accounts created with free balance from promo codes
+Automatically gambles using accounts created with free balance from promo codes. Stops after winning the minimum amount to withdraw and saves the login information to a file
 
 # Requirements
 - Python 3
