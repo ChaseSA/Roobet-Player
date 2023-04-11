@@ -1,0 +1,98 @@
+
+const DEBUG = !0
+const BET_BALANCE = 0.03 // max bankroll available to bet with
+const MAX_CUT_OFF = 1.5
+const MIN_CUT_OFF = 1.08
+const BET_SPEED = 300
+const iskips = 20
+const hmrsv = 3
+let prevresults = [];
+let previous_losses = [];
+let loseStreak = 0;
+let winStreak = 0;
+for (let i = 0; i < iskips; i++) {
+let that = this
+let { multiplier } = await this.skip()
+prevresults.push(multiplier)
+}
+function calculateBetTarget(hmrsv, prevresults) {
+let pLen = prevresults.length
+if (pLen < hmrsv) {
+if (DEBUG) { console.log("[WARN] Not enough input to slice. Returning.. ") }
+return
+} else {
+let current_slice = prevresults.slice(pLen - (hmrsv ), pLen)
+let cLen = current_slice.length
+current_slice.sort((a, b) => a - b)
+if (cLen != hmrsv) { return }
+let midindex = Math.floor(cLen / 2)
+if (cLen % 2) {
+return clampTarget(current_slice[midindex]);
+} else {
+return clampTarget((current_slice[midindex - 1] + current_slice[midindex]) / 2.0);
+}
+}
+}
+function calculateBetMultiple(target) {
+((`${target}`).includes('.') || target < 100) ? target = Math.round(target * 100): null;
+let d = (`${target}`).length - 1;
+return (((Math.ceil((1 / (1 - (Math.ceil(((100 / 101) * (99 / (((target * 1) / 100) * 100 - 1))) * (Math.pow(10, d)))) / (Math.pow(10, d)))) * (Math.pow(100, (d - 1)))) / (Math.pow(100, (d - 1)))).toFixed(d)) / 1)
+}
+function calculateBet(context) {
+let baseBet = roundToBettable(context.balance * (BET_BALANCE / (200 - (loseStreak + winStreak))));
+let vectorApex = calculateBetTarget(hmrsv, prevresults);
+if (!previous_losses.length) {
+if (DEBUG) { context.log(`[INFO]: Base bet ${baseBet/100}, no losses.`); }
+return baseBet;
+}
+let prevLosses = (previous_losses.reduce((a, b) => a + b) * 100);
+//let betMultiple = calculateBetMultiple(vectorApex);
+let nextBet = roundToBettable((baseBet + (prevLosses / (vectorApex - 1))));
+if (DEBUG) { context.log(`[INFO]: Next bet ${nextBet/100}, (baseBet ${baseBet} + (${prevLosses} / ${vectorApex} losses)`); }
+return nextBet;
+}
+function clampTarget(target) {
+return Math.max(MIN_CUT_OFF, Math.min(MAX_CUT_OFF, target));
+}
+function roundToBettable(number) {
+return Math.ceil(number / 100) * 100
+}
+try {
+for (;;) {
+await sleep(BET_SPEED)
+var nextBet = calculateBet(this)
+let vectorApex = calculateBetTarget(hmrsv, prevresults, this)
+this.log(`[INFO]: Betting ${nextBet / 100} bits @ ${vectorApex}x`);
+const { multiplier } = await this.bet(nextBet, vectorApex)
+prevresults.push(multiplier)
+if (multiplier < vectorApex) {
+previous_losses.push(nextBet / 100)
+while (previous_losses.length) {
+await sleep(BET_SPEED)
+nextBet = calculateBet(this)
+let vectorApex = calculateBetTarget(hmrsv, prevresults, this)
+this.log(`[INFO]: Betting ${nextBet / 100} bits @ ${vectorApex}x`);
+const { multiplier } = await this.bet(nextBet, vectorApex)
+if (multiplier < vectorApex) {
+this.log("[LOSS] " + multiplier + "x")
+previous_losses.push(nextBet / 100)
+loseStreak++
+winStreak = 0
+} else {
+this.log("[WIN] " + multiplier + "x")
+winStreak++
+loseStreak = 0
+previous_losses = [];
+}
+prevresults.push(multiplier);
+}
+} else {
+this.log("[WIN] " + multiplier + "x")
+winStreak++
+loseStreak = 0
+}
+}
+} catch (err) { this.log(err); console.log(err); }
+function sleep(ms) {
+return new Promise(resolve => setTimeout(resolve, ms))
+}
